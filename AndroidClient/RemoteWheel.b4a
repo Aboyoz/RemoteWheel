@@ -1,0 +1,294 @@
+﻿Build1=Default,io.github.malisipi.RemoteWheel
+File1=DefaultLayout.bal
+File2=LayoutOne.bal
+File3=slider.html
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+Group=Default Group
+Library1=assectionedslider
+Library2=core
+Library3=keyvaluestore
+Library4=okhttputils2
+Library5=phone
+Library6=xui
+Library7=xui views
+ManifestCode='This code will be applied to the manifest file during compilation.~\n~'You do not need to modify it in most cases.~\n~'See this link for for more information: https://www.b4x.com/forum/showthread.php?p=78136~\n~AddManifestText(~\n~<uses-sdk android:minSdkVersion="14" android:targetSdkVersion="30"/>~\n~<supports-screens android:largeScreens="true" ~\n~    android:normalScreens="true" ~\n~    android:smallScreens="true" ~\n~    android:anyDensity="true"/>)~\n~SetApplicationAttribute(android:icon, "@drawable/icon")~\n~SetApplicationAttribute(android:label, "$LABEL$")~\n~CreateResourceFromFile(Macro, Themes.DarkTheme)~\n~CreateResourceFromFile(Macro, Core.NetworkClearText)~\n~'End of default text.~\n~
+Module1=Starter
+NumberOfFiles=3
+NumberOfLibraries=7
+NumberOfModules=1
+Version=11.5
+@EndOfDesignText@
+#Region  Project Attributes 
+	#ApplicationLabel: Remote Wheel
+	#VersionCode: 1
+	#VersionName: 
+	'SupportedOrientations possible values: unspecified, landscape or portrait.
+	#SupportedOrientations: landscape
+	#CanInstallToExternalStorage: False
+	#DebuggerForceStandardAssets: true
+	'#BridgeLogger: True
+#End Region
+
+#Region  Activity Attributes 
+	#FullScreen: True
+	#IncludeTitle: False
+#End Region
+
+Sub Process_Globals
+	'These global variables will be declared once when the application starts.
+	'These variables can be accessed from all modules.
+	Private xui As XUI
+	Dim AccelerometerSensor As PhoneAccelerometer
+	Dim port As Int = 6116
+End Sub
+
+Sub Globals
+	Dim Dialog As B4XDialog
+	Dim AccelerometerSensorValues As List
+	Dim IpOfDesktopClient As String
+	Dim pws As PhoneWakeState
+	'These global variables will be redeclared each time the activity is created.
+	Private B1 As Button
+	Private B2 As Button
+	Private B3 As Button
+	Private B4 As Button
+	Private B5 As Button
+	Private B6 As Button
+	Private B7 As Button
+	Private B8 As Button
+	Private B9 As Button
+	Private B0 As Button
+	Dim kvs As KeyValueStore
+	Private Das As ASSectionedSlider
+	Private Gas As ASSectionedSlider
+	Private Das2 As WebView
+	Private Gas2 As WebView
+End Sub
+
+Sub SwitchWheels
+	If Floor(kvs.Get("wheelType"))=1 Then
+		kvs.Put("wheelType",2)
+		Das.mBase.Visible=False
+		Gas.mBase.Visible=False
+		Das.SelectedSection=0
+		Gas.SelectedSection=0
+		MoveEvents(0,"1")
+		MoveEvents(0,"2")
+		EnableWheel
+	Else
+		kvs.Put("wheelType",1)
+		Gas2.Visible=False
+		Das2.Visible=False
+		EnableWheel
+	End If
+End Sub
+
+Sub EnableWheel
+	If Floor(kvs.Get("wheelType"))=1 Then
+		Das.mBase.Visible=True
+		Gas.mBase.Visible=True
+	Else
+		Gas2.Visible=True
+		Das2.Visible=True
+	End If
+End Sub
+
+Sub UpdateAccelerometerOnDesktop
+	Dim H As HttpJob
+	H.Initialize("H",Me)
+	H.Download("http://"&IpOfDesktopClient&":"&port&"/s/"&AccelerometerSensorValues.Get(0)&"/"&AccelerometerSensorValues.Get(1)&"/"&AccelerometerSensorValues.Get(2))
+	Wait For (H) JobDone(H As HttpJob) 'H.Success
+	H.Release()
+End Sub
+
+Sub Activity_Create(FirstTime As Boolean)
+	kvs.Initialize(File.DirInternal, "config.dat")
+	If kvs.Get("ip")=Null Then kvs.Put("ip","192.168.1.100")
+	If kvs.Get("wheelType")=Null Then kvs.Put("wheelType","1")
+	If kvs.Get("layout")=Null Then kvs.Put("layout","0")
+
+	If Floor(kvs.Get("layout"))=0 Then Activity.LoadLayout("DefaultLayout")
+	If Floor(kvs.Get("layout"))=1 Then Activity.LoadLayout("LayoutOne")
+
+	ToastMessageShow("Developers: malisipi & aboyoz",True)
+	Dialog.Initialize(Activity)
+	If FirstTime Then
+		Dim IpInput As B4XInputTemplate
+		IpInput.Initialize
+		IpInput.lblTitle.Text="Enter IP Adress of Desktop Client"
+		IpInput.Text=kvs.Get("ip")
+		Wait For (Dialog.ShowTemplate(IpInput, "Connect", "", "Cancel")) Complete (Result As Int)
+		If Result = xui.DialogResponse_Positive Then
+			IpOfDesktopClient=IpInput.Text
+			kvs.Put("ip",IpOfDesktopClient)
+		Else
+			ExitApplication()
+		End If
+	End If
+	Das2.LoadUrl(xui.FileUri(File.DirAssets,"slider.html")&"?ip="&IpOfDesktopClient&"&t=2")
+	Gas2.LoadUrl(xui.FileUri(File.DirAssets,"slider.html")&"?ip="&IpOfDesktopClient&"&t=1")
+	ToastMessageShow("Made with ❤ in B4A",True)
+	ToastMessageShow("Used ASSectionedSlider Library Created by Alexander Stolte",True)
+	EnableWheel
+End Sub
+
+Sub Accelerometer_AccelerometerChanged (X As Float, Y As Float, Z As Float)
+	AccelerometerSensorValues=Array As Float(X,Y,Z)
+End Sub
+
+Sub ButtonEvents (ButtonId As Byte, EventType As Byte)
+	Dim H As HttpJob
+	H.Initialize("H",Me)
+	H.Download("http://"&IpOfDesktopClient&":"&port&"/b/"&EventType&"/"&ButtonId)
+	Wait For (H) JobDone(H As HttpJob) 'H.Success
+	H.Release()
+End Sub
+
+Sub MoveEvents (Fast As Byte, EventType As Byte)
+	Dim H As HttpJob
+	H.Initialize("H",Me)
+	H.Download("http://"&IpOfDesktopClient&":"&port&"/m/"&EventType&"/"&Fast)
+	Wait For (H) JobDone(H As HttpJob) 'H.Success
+	H.Release()
+End Sub
+
+Sub B1_Down
+	ButtonEvents(1,1)
+End Sub
+
+Sub B2_Down
+	ButtonEvents(2,1)
+End Sub
+
+Sub B3_Down
+	ButtonEvents(3,1)
+End Sub
+
+Sub B4_Down
+	ButtonEvents(4,1)
+End Sub
+
+Sub B5_Down
+	ButtonEvents(5,1)
+End Sub
+
+Sub B6_Down
+	ButtonEvents(6,1)
+End Sub
+
+Sub B7_Down
+	ButtonEvents(7,1)
+End Sub
+
+Sub B8_Down
+	ButtonEvents(8,1)
+End Sub
+
+Sub B9_Down
+	ButtonEvents(9,1)
+End Sub
+
+Sub B0_Down
+	ButtonEvents(0,1)
+End Sub
+
+Sub B1_Up
+	ButtonEvents(1,0)
+End Sub
+
+Sub B2_Up
+	ButtonEvents(2,0)
+End Sub
+
+Sub B3_Up
+	ButtonEvents(3,0)
+End Sub
+
+Sub B4_Up
+	ButtonEvents(4,0)
+End Sub
+
+Sub B5_Up
+	ButtonEvents(5,0)
+End Sub
+
+Sub B6_Up
+	ButtonEvents(6,0)
+End Sub
+
+Sub B7_Up
+	ButtonEvents(7,0)
+End Sub
+
+Sub B8_Up
+	ButtonEvents(8,0)
+End Sub
+
+Sub B9_Up
+	ButtonEvents(9,0)
+End Sub
+
+Sub B0_Up
+	ButtonEvents(0,0)
+End Sub
+
+Sub Gas_ValueChanged(Section As Int)
+	MoveEvents(Section,"1")
+	Das.SelectedSection=0
+End Sub
+
+Sub Das_ValueChanged(Section As Int)
+	MoveEvents(Section,"2")
+	Gas.SelectedSection=0
+End Sub
+
+Sub Activity_Resume
+	pws.KeepAlive(True)
+	AccelerometerSensorValues=Array As Float(0,0,0)
+	AccelerometerSensor.StartListening("Accelerometer")
+	Do While IpOfDesktopClient=""
+		Sleep(2000)
+	Loop
+	
+	Dim ConnectionTest As HttpJob
+	ConnectionTest.Initialize("ConnectionTest",Me)
+	ConnectionTest.Download("http://"&IpOfDesktopClient&":"&port&"/connect/")
+	Wait For (ConnectionTest) JobDone(ConnectionTest As HttpJob)
+	If ConnectionTest.Success Then
+		ToastMessageShow("Connected Succesfully",True)
+	Else
+		ConnectionTest.Release()
+		Msgbox("Unable to Connect",Application.LabelName)
+		ExitApplication()
+	End If
+	ConnectionTest.Release()
+	
+	Do While Not(False)
+		UpdateAccelerometerOnDesktop
+		Sleep(50)
+	Loop
+End Sub
+
+Sub Activity_Pause (UserClosed As Boolean)
+	pws.ReleaseKeepAlive()
+	AccelerometerSensor.StopListening()
+End Sub
+
+Private Sub BSwitchWheels_Click
+	SwitchWheels
+End Sub
+
+Private Sub BSwitchLayout_Click
+
+	If Floor(kvs.Get("layout"))=0 Then
+		kvs.Put("layout",1)
+	Else If Floor(kvs.Get("layout"))=1 Then
+		kvs.Put("layout",0)
+	End If
+
+	Log(kvs.Get("layout"))
+	Activity.RemoveAllViews()
+	Activity_Create(False)
+End Sub

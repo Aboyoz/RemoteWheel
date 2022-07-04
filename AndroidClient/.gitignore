@@ -1,0 +1,11 @@
+Objects/bin
+Objects/shell
+Objects/src
+Objects/gen
+Objects/dexed
+Objects/b4xlibs
+Objects/*.txt
+*.meta
+*.apk
+*.dex
+AutoBackups
