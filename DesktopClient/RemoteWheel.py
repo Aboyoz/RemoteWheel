@@ -1,6 +1,11 @@
+from ctypes import alignment
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import socket
 import platform
+import tkinter as tk
+from tkinter import messagebox
+import threading
+import os
 
 if platform.system()=="Linux":
     import gamepad_linux as vgl
@@ -46,7 +51,7 @@ def getIpOfDesktopClient():
     return ip
 
 if platform.system()=="Linux":
-    class MyServer(BaseHTTPRequestHandler):
+    class GamepadControllerServer(BaseHTTPRequestHandler):
         def do_GET(self):
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
@@ -72,25 +77,45 @@ if platform.system()=="Linux":
 
             elif(self.path.startswith("/connect")):
                 self.wfile.write(bytes("OK", "utf-8"))
+                try:
+                    messagebox.showinfo("Connect", "New Device Connected")
+                except NotImplementedError:
+                    pass
             else:
                 print("Request Bug")
                 self.wfile.write(bytes("Request Bug", "utf-8"))
+        def log_message(self, format, *args):
+            return
 
 else:
-    class MyServer(BaseHTTPRequestHandler):
+    t1=0.0
+    class GamepadControllerServer(BaseHTTPRequestHandler):
+
         def do_GET(self):
             self.send_response(200)
             self.send_header("Content-type", "text/plain")
             self.end_headers()
             if self.path.startswith("/s/"):
+                global t1
                 sensorValues=self.path.replace("/s/","").split("/")
-                if (float(sensorValues[1])>8.5):
+                t2=float(sensorValues[1])
+                filteredValue=abs(t2-t1)
+                if(filteredValue>2):
+                    if(t1-t2<0):
+                        t1+=2
+                    else:
+                        t1-=2
+                else:
+                    t1=t2
+
+
+                if (t1>8.5):
                     gamepad.left_joystick_float(x_value_float=1.0, y_value_float=0.0)
-                elif(float(sensorValues[1])<-8.5):
+                elif(t1<-8.5):
                     gamepad.left_joystick_float(x_value_float=-1.0, y_value_float=0.0)
                 else:
-                    gamepad.left_joystick_float(x_value_float=float(sensorValues[1])/10, y_value_float=0.0)
-                    """t1=float(sensorValues[1])"""
+                    gamepad.left_joystick_float(x_value_float=t1/10, y_value_float=0.0)
+
 
 
             elif self.path.startswith("/m/"):
@@ -113,26 +138,45 @@ else:
 
             elif(self.path.startswith("/connect")):
                 self.wfile.write(bytes("OK", "utf-8"))
+                try:
+                    messagebox.showinfo("Connect", "New Device Connected")
+                except NotImplementedError:
+                    pass
             else:
                 print("Request Bug")
                 self.wfile.write(bytes("Request Bug", "utf-8"))
             gamepad.update()
+        def log_message(self, format, *args):
+            return
 
-            """if self.path.startswith("/s/"):
-                sensorValues=self.path.replace("/s/","").split("/")
-                t2=float(sensorValues[1])
-                filteredValue=abs(t2-t1)
-                if(filteredValue>2):
-                    gamepad.left_joystick_float(x_value_float=float(filteredValue)/10, y_value_float=0.0)
-            gamepad.update()"""
-        
+
+def closeServer():
+    webServer.server_close()
+    root.destroy()
+    os._exit(0)
+
+def runGui(thread_name,IP):
+    global root
+    root=tk.Tk()
+    root.resizable(False,False)
+    root.geometry("390x100")
+    root.title("Remote Wheel")
+    tk.Label(root,text="IP of Desktop Client: "+IP,font=("Serif", 15),justify=tk.CENTER).place(x=10, y=10, width=380)
+    tk.Button(root,text="Close Application",font=("Serif", 10),command=closeServer).place(x=20,y=53, width=360)
+
+    root.protocol("WM_DELETE_WINDOW", closeServer)
+    root.mainloop()
+
 if __name__ == "__main__":
     IP_OF_DESKTOP_CLIENT=getIpOfDesktopClient()
-    webServer = HTTPServer((IP_OF_DESKTOP_CLIENT, serverPort), MyServer)
-    print("IP Adress of Desktop Client: "+IP_OF_DESKTOP_CLIENT)
-    try:
-        webServer.serve_forever()
-    except KeyboardInterrupt:
-        pass
 
+    guiApp = threading.Thread(target=runGui, args=("guiApp", IP_OF_DESKTOP_CLIENT))
+    guiApp.start()
+
+    global webServer
+
+    webServer = HTTPServer((IP_OF_DESKTOP_CLIENT, serverPort), GamepadControllerServer)
+    webServer.serve_forever()
+
+    guiApp.join()
     webServer.server_close()
