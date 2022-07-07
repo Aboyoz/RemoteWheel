@@ -94,7 +94,7 @@ There's two slider and two key placement options:
 - [ ] When you touch the tiny spot between above of a slider and screen while slider is all the way up, that slider starts giving value 0.09 which we couldn't understand why. It shouldn't affect it normally and it requires to be fixed.
 
 ![Image Not Found](./Images/9.jpeg "The Spot")
-![Image Not Found](./Images/12.jpg "Value")
+![Image Not Found](./Images/12.JPG "Value")
 
 - [ ] You will probably need to force stop the phone app when it doesn't work or connect. It requires to be fixed.
 
